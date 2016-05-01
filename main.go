@@ -31,7 +31,7 @@ const (
 	giga       = mega << 10
 	tera       = giga << 10
 	
-	VERSION = "0.1"
+	VERSION = "0.2"
 )
 
 func formatArgs() []string {
@@ -113,6 +113,8 @@ func printTree(t *Tree) {
 			n = fmt.Sprintf("\033[1;34m%s\033[m", n)
 		} else if t.IsSymlink() {
 			n = fmt.Sprintf("\033[1;36m%s\033[m", n)
+		} else if t.IsExec() {
+			n = fmt.Sprintf("\033[1;32m%s\033[m", n)
 		}
 	}
 	fmt.Printf("%s[%s] %s\n", p, i, n)

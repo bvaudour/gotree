@@ -121,6 +121,10 @@ func (t *Tree) IsSymlink() bool {
 	return t.file.Mode()&os.ModeSymlink == os.ModeSymlink
 }
 
+func (t *Tree) IsExec() bool {
+	return t.file.Mode().Perm() & 0100 != 0
+}
+
 func (t *Tree) Size() int64 {
 	return t.size
 }
@@ -155,7 +159,7 @@ func (t *Tree) Name() string {
 func (t *Tree) Prefix() string {
 	b := new(bytes.Buffer)
 	if t.level != 0 {
-		l := 0
+		l := 1
 		for _, i := range t.levelCont {
 			b.WriteString(strings.Repeat(space, i-l) + cont)
 			l = i + 1
