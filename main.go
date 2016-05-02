@@ -9,16 +9,20 @@ import (
 )
 
 var (
-	fAll     *bool
-	fOnlyDir *bool
-	fDepth   *int
-	fUser    *bool
-	fSize    *bool
-	fHuman   *bool
-	fMdate   *bool
-	fNoColor *bool
-	fHelp    *bool
-	fVersion *bool
+	fAll         *bool
+	fOnlyDir     *bool
+	fDepth       *int
+	fUser        *bool
+	fSize        *bool
+	fHuman       *bool
+	fMdate       *bool
+	fNoColor     *bool
+	fHelp        *bool
+	fVersion     *bool
+	fExploreLink *bool
+	fPerm        *bool
+	fFullPath    *bool
+	fNoPrefix    *bool
 
 	totalDirs  int
 	totalFiles int
@@ -30,8 +34,8 @@ const (
 	mega       = kilo << 10
 	giga       = mega << 10
 	tera       = giga << 10
-	
-	VERSION = "0.2"
+
+	VERSION = "0.3"
 )
 
 func formatArgs() []string {
@@ -51,20 +55,25 @@ func formatArgs() []string {
 func setFlags() {
 	fAll = flag.Bool("a", false, "Display all files")
 	fOnlyDir = flag.Bool("d", false, "Display only directories")
+	fExploreLink = flag.Bool("l", false, "Follow symbolic links")
+	fPerm = flag.Bool("p", false, "Display permissions")
 	fDepth = flag.Int("L", 3, "Max depth to explore - infinite if 0")
 	fUser = flag.Bool("u", false, "Display owner")
 	fSize = flag.Bool("s", false, "Display size in bytes")
 	fHuman = flag.Bool("h", false, "Display size in human format")
 	fMdate = flag.Bool("D", false, "Display last modified date")
+	fFullPath = flag.Bool("f", false, "Display full path on each file")
+	fNoPrefix = flag.Bool("i", false, "Don't display indentations")
 	fNoColor = flag.Bool("n", false, "Doesn't display colors")
 	fHelp = flag.Bool("-help", false, "Print this help")
-	fVersion = flag.Bool("v", false, "Printe the version")
+	fVersion = flag.Bool("v", false, "Print the version")
 }
 
 func setOptions() {
 	SetMaxDepth(*fDepth)
 	SetOnlyDirs(*fOnlyDir)
 	SetHidden(*fAll)
+	SetExploreLinks(*fExploreLink)
 	SetDirFirst(true)
 }
 
@@ -86,7 +95,7 @@ func human(size int64) string {
 	default:
 		return fmt.Sprintf("%6d%s", size, u)
 	}
-	return fmt.Sprintf("%4.1f%s", h, u)
+	return fmt.Sprintf("%6.1f%s", h, u)
 }
 
 func date(t time.Time) string {
@@ -94,19 +103,44 @@ func date(t time.Time) string {
 }
 
 func printTree(t *Tree) {
-	p := t.Prefix()
-	n := t.Name()
-	i := t.Perm()
+	var p, n, i string
+	if !*fNoPrefix {
+		p = t.Prefix()
+	}
+	if t.Level() == 0 || *fFullPath {
+		n = t.Path()
+	} else {
+		n = t.Name()
+	}
+	if *fPerm {
+		i = strings.TrimSpace(t.Perm())
+	}
 	if *fUser {
-		i = fmt.Sprintf("%s %10s", i, t.Owner())
+		if i == "" {
+			i = fmt.Sprintf("%-10s", t.Owner())
+		} else {
+			i = fmt.Sprintf("%s  %-10s", i, t.Owner())
+		}
 	}
 	if *fHuman {
-		i = fmt.Sprintf("%s %s", i, human(t.Size()))
+		if i == "" {
+			i = human(t.Size())
+		} else {
+			i = fmt.Sprintf("%s %s", i, human(t.Size()))
+		}
 	} else if *fSize {
-		i = fmt.Sprintf("%s %10d", i, t.Size())
+		if i == "" {
+			i = fmt.Sprintf("%10d", t.Size())
+		} else {
+			i = fmt.Sprintf("%s %10d", i, t.Size())
+		}
 	}
 	if *fMdate {
-		i = fmt.Sprintf("%s %s", i, date(t.Mtime()))
+		if i == "" {
+			i = date(t.Mtime())
+		} else {
+			i = fmt.Sprintf("%s  %s", i, date(t.Mtime()))
+		}
 	}
 	if !*fNoColor {
 		if t.IsDir() {
@@ -117,7 +151,11 @@ func printTree(t *Tree) {
 			n = fmt.Sprintf("\033[1;32m%s\033[m", n)
 		}
 	}
-	fmt.Printf("%s[%s] %s\n", p, i, n)
+	if i == "" {
+		fmt.Printf("%s%s\n", p, n)
+	} else {
+		fmt.Printf("%s[%s] %s\n", p, i, n)
+	}
 }
 
 func main() {
@@ -136,6 +174,9 @@ func main() {
 		args = []string{"."}
 	}
 	for _, p := range args {
+		if *fFullPath {
+
+		}
 		t := NewTree(p)
 		if t != nil {
 			totalFiles += t.NbFiles()

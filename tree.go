@@ -21,11 +21,14 @@ const (
 )
 
 var (
-	level     = 0
-	only_dir  = false
-	hidden    = false
-	dir_first = false
+	level        = 0
+	only_dir     = false
+	hidden       = false
+	dir_first    = false
+	explore_link = false
 )
+
+var getInfo = os.Lstat
 
 func SetMaxDepth(d int) {
 	if d <= 0 {
@@ -45,6 +48,10 @@ func SetHidden(b bool) {
 
 func SetDirFirst(b bool) {
 	dir_first = b
+}
+
+func SetExploreLinks(b bool) {
+	explore_link = b
 }
 
 type fsorter struct {
@@ -113,6 +120,10 @@ func (t *Tree) isLast() bool {
 	return t.idx == len(t.parent.childs)-1
 }
 
+func (t *Tree) Level() int {
+	return t.level
+}
+
 func (t *Tree) IsDir() bool {
 	return t.file.IsDir()
 }
@@ -122,7 +133,7 @@ func (t *Tree) IsSymlink() bool {
 }
 
 func (t *Tree) IsExec() bool {
-	return t.file.Mode().Perm() & 0100 != 0
+	return t.file.Mode().Perm()&0100 != 0
 }
 
 func (t *Tree) Size() int64 {
@@ -150,9 +161,6 @@ func (t *Tree) Path() string {
 }
 
 func (t *Tree) Name() string {
-	if t.level == 0 {
-		return t.path
-	}
 	return t.file.Name()
 }
 
@@ -183,7 +191,10 @@ func (t *Tree) NbFiles() int {
 }
 
 func NewTree(path string) *Tree {
-	f, e := os.Lstat(path)
+	if explore_link {
+		getInfo = os.Stat
+	}
+	f, e := getInfo(path)
 	if e != nil {
 		return nil
 	}
@@ -201,6 +212,9 @@ func NewTree(path string) *Tree {
 func newSubTree(parent *Tree, f os.FileInfo, idx int, lcont []int) *Tree {
 	t := new(Tree)
 	t.path = filepath.Join(parent.path, f.Name())
+	if explore_link {
+		f, _ = getInfo(t.path)
+	}
 	t.file = f
 	t.level = parent.level + 1
 	t.levelCont = lcont
